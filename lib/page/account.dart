@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:thesis_app/firebase/authentication.dart';
+import 'package:thesis_app/page/edit_event.dart';
 import 'package:thesis_app/page/post_event.dart';
 import 'package:thesis_app/widget/botnavbar.dart';
-
 
 
 class AccountPage extends StatefulWidget {
@@ -31,8 +33,8 @@ class _AccountPageState extends State<AccountPage> {
     loadUsername();
     if(_uploadedFileURL == null && _image == null)
         downloadFile();
-
   }
+
   void loadUsername() async{
     FirebaseUser firebaseUser = await FirebaseAuth.instance.currentUser();
     setState(() {
@@ -67,7 +69,6 @@ class _AccountPageState extends State<AccountPage> {
 
   @override
   Widget build(BuildContext context) {
-    print("build");
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: SafeArea(
@@ -121,14 +122,35 @@ class _AccountPageState extends State<AccountPage> {
                         child: ListView(
                           children: <Widget>[
                             FlatButton.icon(
-                              onPressed: (){
+                              onPressed: () async{
+                                Set<Marker> marker = {};
+                                Position position = await Geolocator().getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+                                LatLng currentPosition = LatLng(position.latitude,position.longitude);
+                                marker.add(
+                                  Marker(
+                                    markerId:
+                                    MarkerId("${position.latitude}, ${position.longitude}"),
+                                    icon: BitmapDescriptor.defaultMarker,
+                                    position: currentPosition,
+                                  ),
+                                );
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (context) => PostEventPage())
+                                  MaterialPageRoute(builder: (context) => PostEventPage(marker: marker, latLng: currentPosition))
                                 );
                               },
                               icon: Icon(Icons.add, size: 25,),
                               label: Text('Post Event', style: TextStyle(fontSize: 15),),
+                            ),
+                            FlatButton.icon(
+                              onPressed: (){
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => EditEventPage())
+                                );
+                              },
+                              icon: Icon(Icons.edit, size: 25,),
+                              label: Text('Edit Event', style: TextStyle(fontSize: 15),),
                             ),
                             FlatButton.icon(
                               onPressed: (){

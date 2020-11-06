@@ -20,7 +20,7 @@ bool validEmail = false;
 bool validPass = false;
 final FirebaseAuth auth = FirebaseAuth.instance;
 bool isLoading = false;
-
+bool isVerified = false;
 class LoginPageState extends State<LoginPage> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
@@ -125,6 +125,7 @@ class LoginPageState extends State<LoginPage> {
         if(validEmail == true && validPass == true){
           final user = await auth
               .signInWithEmailAndPassword(email: emailController.text, password: passController.text,)
+              .then((value) => isVerified = value.user.isEmailVerified)
               .catchError((e){
             setState(() {
               isLoading = false;
@@ -144,10 +145,20 @@ class LoginPageState extends State<LoginPage> {
               isLoading = false;
             });
           });
-          if(user!= null){
+          if(user!= null && isVerified == true){
             emailController.clear();
             passController.clear();
             Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => HomePage()));
+          }else if(isVerified == false){
+            Fluttertoast.showToast(
+                msg: "Please Verify Your Email",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
+                fontSize: 16.0
+            );
           }
 
         }
@@ -161,6 +172,7 @@ class LoginPageState extends State<LoginPage> {
 
     Widget loginButton(){
       return Container(
+        margin: EdgeInsets.only(top: 20),
         alignment: Alignment.centerRight,
         child: Material(
           color: Colors.blueAccent,
@@ -226,7 +238,7 @@ class LoginPageState extends State<LoginPage> {
                 loginTitle(),
                 formEmailInput(),
                 formPasswordInput(),
-                forgotPassword(),
+//                forgotPassword(),
                 loginButton(),
                 registerGuide(),
                 registerButton(),
@@ -245,7 +257,7 @@ class LoginPageState extends State<LoginPage> {
             leading: new IconButton(
               icon: new Icon(Icons.arrow_back, color: Colors.black,),
               onPressed: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => LoginSelectionPage()),
                 );

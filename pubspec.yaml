@@ -36,9 +36,13 @@ dependencies:
   email_validator: ^1.0.4
   firebase_database: ^3.1.6
   flutter_local_notifications: ^1.4.4+2
-  image_picker: ^0.6.7+4
+  image_picker: ^0.6.7+12
   flutter_typeahead: ^1.8.7
-
+  google_maps_flutter: ^0.5.33
+  location: ^2.3.5
+  flutter_map: ^0.10.1+1
+  http: ^0.12.1
+  path_provider: ^1.6.7
 
 dev_dependencies:
   flutter_test:
@@ -55,7 +59,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/cover.jpeg
+    - assets/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #  - images/a_dot_burr.jpeg

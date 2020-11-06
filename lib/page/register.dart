@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:thesis_app/page/home.dart';
 import 'package:thesis_app/page/login.dart';
-import 'package:thesis_app/widget/toast_msg.dart';
 
 class RegisterPage extends StatefulWidget {
   RegisterPage({Key key}) : super (key : key);
@@ -27,20 +26,23 @@ class _RegisterPageState extends State<RegisterPage> {
     // TODO: implement initState
     super.initState();
   }
+  final GlobalKey<FormState> formKeyRegister = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
 
-    final GlobalKey<FormState> formKeyRegister = GlobalKey<FormState>();
 
     void loginValidate() async{
       setState(() {
         isLoading = true;
       });
-
       if (formKeyRegister.currentState.validate()) {
         if(validEmail == true && validPass == true){
           final user = await _auth
               .createUserWithEmailAndPassword(email: emailController.text, password: passController.text,)
+              .then((value) async =>
+                await value.user.sendEmailVerification()
+          )
               .catchError((e){
             setState(() {
               isLoading = false;
@@ -58,16 +60,21 @@ class _RegisterPageState extends State<RegisterPage> {
             setState(() {
               isLoading = false;
             });
+            Fluttertoast.showToast(
+                msg: 'Account Created, Please Verify Your Email',
+                toastLength: Toast.LENGTH_LONG,
+                gravity: ToastGravity.BOTTOM,
+                timeInSecForIosWeb: 1,
+                backgroundColor: Colors.green,
+                textColor: Colors.white,
+                fontSize: 16.0
+            );
+            emailController.clear();
+            passController.clear();
+            confirmPassController.clear();
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => LoginPage()));
           });
-          if(user!= null){
-            final login = await _auth.signInWithEmailAndPassword(email: emailController.text, password: passController.text);
-            if(login != null){
-              emailController.clear();
-              passController.clear();
-              confirmPassController.clear();
-              Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => HomePage()));
-            }
-          }
+
 
         }
       }

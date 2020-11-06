@@ -33,6 +33,8 @@ class _SearchResultPageState extends State<SearchResultPage> {
       Position position = await Geolocator().getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       widget.data.forEach((item){
         double d = getDistanceFromLatLonInKm(position.latitude, position.longitude, item["lat"], item["lng"]);
+        print("user location : ${position.latitude}, ${position.longitude}");
+        print("distance event ${item['eventName']} :${d} km");
         if(widget.category == '\#Any'){
           if(widget.distance == 0){
             setState(() {

@@ -53,18 +53,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
           });
         }
       });
-    }).whenComplete((){
-      if(list.isEmpty){
-        Fluttertoast.showToast(
-            msg: "No Events",
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            timeInSecForIosWeb: 1,
-            backgroundColor: Colors.grey,
-            textColor: Colors.white,
-            fontSize: 16.0
-        );
-      }
     });
   }
   @override

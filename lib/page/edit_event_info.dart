@@ -1,24 +1,26 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mapbox_search_flutter/mapbox_search_flutter.dart';
 import 'package:thesis_app/firebase/crud.dart';
-import 'package:thesis_app/page/edit_event_info.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:thesis_app/page/account.dart';
+import 'package:thesis_app/page/edit_event.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
-
-class PostEventPage extends StatefulWidget {
-  LatLng latLng;
-  Set<Marker> marker;
-  PostEventPage({this.latLng,this.marker});
-  _PostEventPageState createState() => _PostEventPageState();
+class EditEventInfoPage extends StatefulWidget {
+  final event;
+  EditEventInfoPage({this.event,});
+  _EditEventInfoPageState createState() => _EditEventInfoPageState();
 }
 
 var _dates = '';
@@ -44,23 +46,65 @@ List _myCategories = [
 ];
 final picker = ImagePicker();
 File _image;
-StorageReference ref = FirebaseStorage.instance.ref();
 final f = new DateFormat('yyyy-MM-dd');
 TextEditingController eventNameController = new TextEditingController();
 TextEditingController descController = new TextEditingController();
 TextEditingController pathController = new TextEditingController();
 String _uploadedFileURL;
-Position position;
+Set<Marker> marker = {};
+LatLng latLng;
 
-class _PostEventPageState extends State<PostEventPage>  {
+class _EditEventInfoPageState extends State<EditEventInfoPage> {
   @override
 
   void initState() {
-    print(widget.latLng);
     // TODO: implement initState
     super.initState();
+    downloadFile();
+    eventNameController.text = widget.event['eventName'];
+    _uploadedFileURL = widget.event['coverImageUrl'];
+    descController.text = widget.event['description'];
+    _placeData = widget.event['address'];
+    lat = widget.event['lat'];
+    lng = widget.event['lng'];
+    _dates = widget.event['dates'];
+    _times = widget.event['times'];
+    _year = widget.event['year'];
+    _month = widget.event['month'];
+    _day = widget.event['day'];
+    _hour = widget.event['hour'];
+    _minute = widget.event['minute'];
+    _valCategory = widget.event['category'];
+    latLng = LatLng(widget.event['lat'],widget.event['lng']);
+    marker.add(
+      Marker(
+        markerId:
+        MarkerId("${ widget.event['lat']} , ${ widget.event['lng']}"),
+        icon: BitmapDescriptor.defaultMarker,
+        position: latLng,
+      ),
+    );
   }
-
+  Future<File> urlToFile(String imageUrl) async {
+// generate random number.
+    var rng = new Random();
+// get temporary directory of device.
+    Directory tempDir = await getTemporaryDirectory();
+// get temporary path from temporary directory.
+    String tempPath = tempDir.path;
+// create a new file in temporary path with random file name.
+    File file = new File('$tempPath'+ (rng.nextInt(100)).toString() +'.png');
+// call http.get method and pass imageUrl into it to get response.
+    http.Response response = await http.get(imageUrl);
+// write bodyBytes received in response to file.
+    await file.writeAsBytes(response.bodyBytes);
+// now return the file which is created with random name in
+// temporary directory and image bytes from response is written to // that file.
+    setState(() {
+      _image = file;
+    });
+    return file;
+  }
 
   void showDatePicker(){
     DatePicker.showDatePicker(context,
@@ -111,39 +155,19 @@ class _PostEventPageState extends State<PostEventPage>  {
       "minute" : _minute,
       "category" : _valCategory
     };
+    var dbRef = FirebaseDatabase.instance.reference().child('Events');
+    dbRef.once().then((DataSnapshot snapshot){
+      Map<dynamic, dynamic> values = snapshot.value;
+      values.forEach((key, value) {
+        if(value['eventName'] == widget.event['eventName']){
+          dbRef.child(key).remove();
+        }
+      });
+    });
     CRUD().readDuplicateAndCreate(data,'Events','eventName');
-  }
-  showAlertDialog(BuildContext context) {
-    // set up the buttons
-    Widget cancelButton = FlatButton(
-      child: Text("Cancel"),
-      onPressed:  () {
-        Navigator.of(context, rootNavigator: true).pop();
-      },
-    );
-    Widget continueButton = FlatButton(
-      child: Text("Continue"),
-      onPressed:  (){
-        uploadFile();
-        Navigator.of(context, rootNavigator: true).pop();
-      },
-    );
-
-    // set up the AlertDialog
-    AlertDialog alert = AlertDialog(
-      title: Text("Confirmation"),
-      content: Text("Are you sure want to register your event? Once the event registered you will not able to change it."),
-      actions: [
-        cancelButton,
-        continueButton,
-      ],
-    );
-    // show the dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return alert;
-      },
+    Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => AccountPage())
     );
   }
 
@@ -154,13 +178,13 @@ class _PostEventPageState extends State<PostEventPage>  {
         direction: Axis.vertical,
         children: [
           FlatButton.icon(onPressed: (){
-              getImage('camera');
-              Navigator.of(context, rootNavigator: true).pop();
-            }, icon: Icon(Icons.camera_enhance), label: Text('Camera'),),
+            getImage('camera');
+            Navigator.of(context, rootNavigator: true).pop();
+          }, icon: Icon(Icons.camera_enhance), label: Text('Camera'),),
           FlatButton.icon(onPressed: (){
-              getImage('gallery');
-              Navigator.of(context, rootNavigator: true).pop();
-            }, icon: Icon(Icons.photo), label: Text('Gallery')),
+            getImage('gallery');
+            Navigator.of(context, rootNavigator: true).pop();
+          }, icon: Icon(Icons.photo), label: Text('Gallery')),
         ],
       ),
 
@@ -184,43 +208,24 @@ class _PostEventPageState extends State<PostEventPage>  {
     setState(() {
       _image = File(pickedFile.path);
       pathController.text = _image.toString();
-
     });
-  }
-
-  Future uploadFile() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    var uid = user.uid;
-    var eventName = eventNameController.text;
-    StorageUploadTask uploadTask = ref.child('EventCoverImage/$uid').child(eventName).putFile(_image);
-    await uploadTask.onComplete;
-    print('File Uploaded');
-    downloadFile();
   }
 
   Future downloadFile() async{
     print('Download File');
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    var uid = user.uid;
-    var eventName = eventNameController.text;
+    var eo = widget.event['user'];
     StorageReference ref = FirebaseStorage.instance.ref();
-    ref.child('EventCoverImage/$uid').child(eventName).getDownloadURL().then((fileURL) {
+    ref.child('EventCoverImage/$eo').child(widget.event['eventName']).getDownloadURL().then((fileURL) {
       setState(() {
         fileURL == null ? _uploadedFileURL = null : _uploadedFileURL = fileURL;
       });
+      print(_uploadedFileURL);
     }).catchError((e){
       print(e.code);
-    }).whenComplete(() {
-      try{
-        registerEvent();
-      }catch(e){
-        print(e);
-      }
     });
   }
-
   Widget build(BuildContext context) {
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home : SafeArea(
@@ -267,6 +272,7 @@ class _PostEventPageState extends State<PostEventPage>  {
                             decoration : InputDecoration(
                               border: OutlineInputBorder(),
                               labelText: 'Event name',
+
                             ),
                           ),
                         ),
@@ -314,19 +320,22 @@ class _PostEventPageState extends State<PostEventPage>  {
                             searchHint: 'Pick location',
                             onSelected: (place) {
                               setState(() {
-                                widget.marker.clear();
-                                _placeData = place;
-                                lat = place.center[1];
-                                lng = place.center[0];
-                                widget.latLng = LatLng(lat,lng);
-                                widget.marker.add(
-                                  Marker(
-                                    markerId:
-                                    MarkerId(widget.latLng.toString()),
-                                    icon: BitmapDescriptor.defaultMarker,
-                                    position: widget.latLng,
-                                  ),
-                                );
+                                setState(() {
+                                  marker.clear();
+                                  _placeData = place;
+
+                                  lat = place.center[1];
+                                  lng = place.center[0];
+                                  latLng = LatLng(place.center[1],place.center[0]);
+                                  marker.add(
+                                    Marker(
+                                      markerId:
+                                      MarkerId("${latLng}"),
+                                      icon: BitmapDescriptor.defaultMarker,
+                                      position: latLng,
+                                    ),
+                                  );
+                                });
                               });
                             },
                             context: context,
@@ -337,21 +346,21 @@ class _PostEventPageState extends State<PostEventPage>  {
 //                          child: GoogleMap(
 //                            mapType: MapType.normal,
 //                            initialCameraPosition: CameraPosition(
-//                              target: widget.latLng,
+//                              target: latLng,
 //                              zoom: 15.0,
 //                            ),
-//                            markers: widget.marker,
+//                            markers: marker,
 //                            onTap: (position){
 //                              setState(() {
-//                                widget.marker.clear();
+//                                marker.clear();
 //                                lat = position.latitude;
 //                                lng = position.longitude;
-//                                widget.marker.add(
+//                                marker.add(
 //                                  Marker(
 //                                    markerId:
-//                                    MarkerId("${widget.latLng.latitude}, ${widget.latLng.longitude}"),
+//                                    MarkerId("${position.latitude}, ${position.longitude}"),
 //                                    icon: BitmapDescriptor.defaultMarker,
-//                                    position: LatLng(position.latitude,position.longitude),
+//                                    position: position,
 //                                  ),
 //                                );
 //                              });
@@ -388,11 +397,36 @@ class _PostEventPageState extends State<PostEventPage>  {
                         width: double.infinity,
                         child: RaisedButton(
                           padding: EdgeInsets.only(left: 30,right: 30,top: 20, bottom: 20),
-                          onPressed: (){
-                            showAlertDialog(context);
+                          onPressed: () async{
+                            await urlToFile(_uploadedFileURL);
+                            StorageReference ref = FirebaseStorage.instance.ref();
+                            FirebaseUser user = await FirebaseAuth.instance.currentUser();
+                            var uid = user.uid;
+                            if(eventNameController.text != widget.event['eventName']){
+                              var eventName = eventNameController.text;
+                              StorageUploadTask uploadTask = ref.child('EventCoverImage/$uid').child(eventName).putFile(_image); //ini load _image dlu
+                              await uploadTask.onComplete;
+                              print('File Uploaded');
+
+                              ref.child('EventCoverImage/$uid').child(eventName).getDownloadURL().then((fileURL) {
+                                setState(() {
+                                  fileURL == null ? _uploadedFileURL = null : _uploadedFileURL = fileURL;
+                                });
+                              }).catchError((e){
+                                print(e.code);
+                              }).whenComplete(() {
+                                FirebaseDatabase.instance.reference().child('Events').child(widget.event['eventName']).update({
+                                  'coverImageUrl' : _uploadedFileURL
+                                }).catchError((e){
+                                  print(e);
+                                });
+                              });
+                            }else{
+                              registerEvent();
+                            }
                           },
                           color: Colors.redAccent,
-                          child: Text('Post my event..', style: TextStyle(color: Colors.white),),
+                          child: Text('Update my event..', style: TextStyle(color: Colors.white),),
                         ),
                       ),
                     ))

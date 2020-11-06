@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:thesis_app/widget/app_logo.dart';
 import 'package:thesis_app/widget/email_button.dart';
 import 'package:thesis_app/widget/google_button.dart';
@@ -10,6 +11,15 @@ class LoginSelectionPage extends StatefulWidget {
 }
 
 class _InstantLoginPageState extends State<LoginSelectionPage> {
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    getUserLocation();
+  }
+  void getUserLocation () async{
+    Position position = await Geolocator().getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+  }
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

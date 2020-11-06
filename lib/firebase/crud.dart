@@ -10,8 +10,10 @@ class CRUD {
     FirebaseDatabase.instance
         .reference()
         .child(tableName)
-        .child(data[dataProperty])
-        .set(data);
+        .push()
+        .set(data).catchError((e){
+          print(e);
+    });
   }
   void createPushNotification(var data, String tableName, String dataProperty) async{
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
@@ -73,7 +75,6 @@ class CRUD {
             textColor: Colors.white,
             fontSize: 16.0
         );
-
       }
       else{
         Fluttertoast.showToast(
